@@ -81,6 +81,26 @@ def get_value_for_year(statement, metric, year):
 
 
 
+def get_display_units(currency):
+    if currency == "INR":
+        return 1e7, "INR crore"
+
+    elif currency == "USD":
+        return 1e9, "USD billion"
+
+    return 1, currency or "Unknown currency"
+
+
+def format_financial_value(value, currency):
+    if value is None:
+        return "N/A"
+
+    divisor, unit = get_display_units(currency)
+
+    return f"{value / divisor:,.2f} {unit}"
+
+
+
 if __name__ == "__main__":
 
     
