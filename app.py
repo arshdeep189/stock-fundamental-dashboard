@@ -16,6 +16,12 @@ from src.financial_metrics import (
     to_crores
 )
 
+from src.data_validation import (
+    validate_financial_years,
+    validate_currency,
+    validate_ratio_inputs
+)
+
 st.set_page_config(
     page_title="Indian Stock Fundamental Dashboard",
     page_icon="📈",
@@ -109,19 +115,16 @@ if st.session_state.get("show_analysis", False):
                 st.divider()
                 st.header("Financial Fundamentals")
                 currency = info.get("financialCurrency")
+                if not validate_currency(currency):
+                    st.warning(
+                        f"Currency '{currency}' is not currently "
+                        "validated for this dashboard. "
+                        "Monetary figures require verification."
+                    )
                 if income.empty:
                     st.warning("Financial statements unavailable.")
                 else:
-                    years = sorted(
-                        {
-                            col.year
-                            for col in income.columns
-                            if get_value_for_year(
-                                income, "TotalRevenue", col.year
-                            ) is not None
-                        },
-                        reverse=True
-                    )
+                    years = validate_financial_years(income)
 
                     if not years:
                         st.warning("No usable annual revenue data found.")
@@ -151,6 +154,12 @@ if st.session_state.get("show_analysis", False):
                     net_income = get_value_for_year(
                         income, "NetIncome", selected_year
                     )
+
+                    if not validate_ratio_inputs(revenue, net_income):
+                        st.warning(
+                            "Some financial values are missing or invalid. "
+                            "Certain fundamental ratios may be unavailable."
+                        )
 
                     # Extract balance sheet metrics
                     equity = get_value_for_year(
