@@ -1,4 +1,5 @@
 import plotly.graph_objects as go
+import pandas as pd
 import streamlit as st
 import yfinance as yf
 
@@ -6,7 +7,7 @@ from src.data_fetcher import fetch_stock_data
 from src.financial_statements import fetch_financial_statements
 
 from src.financial_metrics import (
-    get_value_for_year,
+    get_value_for_date,
     calculate_growth,
     calculate_roe,
     calculate_debt_equity,
@@ -48,9 +49,10 @@ if ticker and not ticker.endswith(".NS"):
     ticker += ".NS"
 
 if st.button("Analyze Stock"):
-    st.session_state["show_analysis"] = True
+    st.session_state["analysis_request"] = (ticker, period)
 
-if st.session_state.get("show_analysis", False):
+if "analysis_request" in st.session_state:
+    ticker, period = st.session_state["analysis_request"]
     if not ticker or ticker == ".NS":
         st.warning("Please enter a valid ticker.")
     else:
@@ -124,35 +126,44 @@ if st.session_state.get("show_analysis", False):
                 if income.empty:
                     st.warning("Financial statements unavailable.")
                 else:
-                    years = validate_financial_years(income)
+                    report_dates = sorted(
+                        {
+                            pd.Timestamp(col).date()
+                            for col in income.columns
+                            if get_value_for_date(
+                                income, "TotalRevenue", col
+                            ) is not None
+                        },
+                        reverse=True
+                    )
 
-                    if not years:
-                        st.warning("No usable annual revenue data found.")
+                    if not report_dates:
+                        st.warning("No valid annual financial data found.")
                         st.stop()
 
                     # Financial year selector
-                    selected_year = st.selectbox(
+                    selected_date = st.selectbox(
                         "Select Financial Year",
-                        options=years,
-                        format_func=lambda year: f"FY{year}",
-                        key=f"financial_year_{ticker}"
+                        options=report_dates,
+                        format_func=lambda d: f"FY{d.year} ({d:%d %b %Y})",
+                        key=f"financial_date_{ticker}"
                     )
-                    previous_year = selected_year - 1
-                    st.caption(
-                        f"Financial Year Ending: {selected_year}"
-                    )
+                    previous_date = (
+                        pd.Timestamp(selected_date) - pd.DateOffset(years=1)
+                    ).date()
+                    st.caption(f"Reporting Date: {selected_date}")
 
                     # Extract income statement metrics
-                    revenue = get_value_for_year(
-                        income, "TotalRevenue", selected_year
+                    revenue = get_value_for_date(
+                        income, "TotalRevenue", selected_date
                     )
 
-                    previous_revenue = get_value_for_year(
-                        income, "TotalRevenue", previous_year
+                    previous_revenue = get_value_for_date(
+                        income, "TotalRevenue", previous_date
                     )
 
-                    net_income = get_value_for_year(
-                        income, "NetIncome", selected_year
+                    net_income = get_value_for_date(
+                        income, "NetIncome", selected_date
                     )
 
                     if not validate_ratio_inputs(revenue, net_income):
@@ -162,16 +173,16 @@ if st.session_state.get("show_analysis", False):
                         )
 
                     # Extract balance sheet metrics
-                    equity = get_value_for_year(
-                        balance, "StockholdersEquity", selected_year
+                    equity = get_value_for_date(
+                        balance, "StockholdersEquity", selected_date
                     )
 
-                    previous_equity = get_value_for_year(
-                        balance, "StockholdersEquity", previous_year
+                    previous_equity = get_value_for_date(
+                        balance, "StockholdersEquity", previous_date
                     )
 
-                    debt = get_value_for_year(
-                        balance, "TotalDebt", selected_year
+                    debt = get_value_for_date(
+                        balance, "TotalDebt", selected_date
                     )
 
                     # Calculate fundamental ratios
@@ -251,17 +262,17 @@ if st.session_state.get("show_analysis", False):
                     # Collect annual financial data
                     financial_data = []
 
-                    for year in sorted(years):
-                        annual_revenue = get_value_for_year(
-                            income, "TotalRevenue", year
+                    for  report_date in sorted( report_dates):
+                        annual_revenue = get_value_for_date(
+                            income, "TotalRevenue",  report_date
                         )
 
-                        annual_profit = get_value_for_year(
-                            income, "NetIncome", year
+                        annual_profit = get_value_for_date(
+                            income, "NetIncome",  report_date
                         )
 
                         financial_data.append({
-                            "Year": f"FY{year}",
+                            "Year": f"FY{report_date.year} ({report_date:%d %b})",
                             "Revenue": annual_revenue / divisor
                             if annual_revenue is not None else None,
                             "Net Income": annual_profit / divisor
