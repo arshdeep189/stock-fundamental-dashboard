@@ -5,7 +5,7 @@ import yfinance as yf
 
 from src.financial_statements import fetch_financial_statements
 from src.financial_metrics import (
-    get_value_for_year,
+    get_value_for_date,
     calculate_growth,
     calculate_roe,
     calculate_debt_equity,
@@ -56,47 +56,65 @@ def available_dates(income):
 
 
 # Calculate a company's fundamental metrics
-def company_metrics(income, balance, year, currency):
 
-    revenue = get_value_for_year(
-        income, "TotalRevenue", year
+def company_metrics(income, balance, report_date, currency):
+
+    # Previous year's corresponding reporting date
+    previous_date = (
+        pd.Timestamp(report_date) - pd.DateOffset(years=1)
     )
 
-    previous_revenue = get_value_for_year(
-        income, "TotalRevenue", year - 1
+    # Income statement values
+    revenue = get_value_for_date(
+        income, "TotalRevenue", report_date
     )
 
-    net_income = get_value_for_year(
-        income, "NetIncome", year
+    previous_revenue = get_value_for_date(
+        income, "TotalRevenue", previous_date
     )
 
-    equity = get_value_for_year(
-        balance, "StockholdersEquity", year
+    net_income = get_value_for_date(
+        income, "NetIncome", report_date
     )
 
-    previous_equity = get_value_for_year(
-        balance, "StockholdersEquity", year - 1
+    # Balance sheet values
+    equity = get_value_for_date(
+        balance, "StockholdersEquity", report_date
     )
 
-    debt = get_value_for_year(
-        balance, "TotalDebt", year
+    previous_equity = get_value_for_date(
+        balance, "StockholdersEquity", previous_date
     )
 
+    debt = get_value_for_date(
+        balance, "TotalDebt", report_date
+    )
+
+    # Calculate financial ratios
     growth = calculate_growth(revenue, previous_revenue)
-    margin = calculate_net_profit_margin(revenue, net_income)
-    roe = calculate_roe(net_income, equity, previous_equity)
+
+    margin = calculate_net_profit_margin(
+        revenue, net_income
+    )
+
+    roe = calculate_roe(
+        net_income, equity, previous_equity
+    )
+
     debt_equity = calculate_debt_equity(debt, equity)
 
+    # Numerical values for our charts
     raw_ratios = {
-    "Revenue Growth": growth,
-    "Net Profit Margin": margin,
-    "ROE": roe,
-    "Debt-to-Equity": debt_equity
+        "Revenue Growth": growth,
+        "Net Profit Margin": margin,
+        "ROE": roe,
+        "Debt-to-Equity": debt_equity
     }
 
     def percent(value):
         return f"{value:.2f}%" if value is not None else "N/A"
 
+    # Formatted values for the comparison table
     display_metrics = {
         "Revenue": format_financial_value(revenue, currency),
         "Net Income": format_financial_value(net_income, currency),
@@ -108,7 +126,9 @@ def company_metrics(income, balance, year, currency):
             if debt_equity is not None else "N/A"
         )
     }
+
     return display_metrics, raw_ratios
+
 
 
 # Company selection form
@@ -165,11 +185,11 @@ if "comparison" in st.session_state:
             year = selected_date.year
 
             metrics_a,ratios_a = company_metrics(
-                income_a, balance_a, year, currency_a
+                income_a, balance_a, selected_date, currency_a
             )
 
             metrics_b,ratios_b = company_metrics(
-                income_b, balance_b, year, currency_b
+                income_b, balance_b, selected_date, currency_b
             )
 
             st.subheader(f"{a} vs {b}")

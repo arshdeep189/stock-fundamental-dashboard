@@ -101,6 +101,38 @@ def format_financial_value(value, currency):
 
 
 
+def get_value_for_date(statement, metric, report_date):
+    if statement.empty or metric not in statement.index:
+        return None
+
+    target_date = pd.Timestamp(report_date).date()
+
+    matching_columns = [
+        col for col in statement.columns
+        if pd.Timestamp(col).date() == target_date
+    ]
+
+    if len(matching_columns) != 1:
+        return None
+
+    value = statement.loc[metric, matching_columns[0]]
+
+    if pd.isna(value):
+        return None
+
+    value = float(value)
+
+    if not pd.api.types.is_number(value):
+        return None
+
+    import math
+    if not math.isfinite(value):
+        return None
+
+    return value
+
+
+
 if __name__ == "__main__":
 
     
