@@ -1,3 +1,15 @@
+## Live Demo
+
+[Launch the Interactive Dashboard](https://indian-stock-fundamental-dashboard.streamlit.app/)
+
+The public version uses reproducible synthetic financial
+data for fictional companies DEMO1 and DEMO2.
+
+The local research version supports NSE-listed equities
+using Yahoo Finance data.
+
+**Testing:** 16 automated tests passed.
+
 # 📈 Indian Stock Fundamental Analysis Dashboard
 
 An interactive financial analytics application built using Python, Streamlit, Pandas, and Plotly to explore and compare companies listed on the National Stock Exchange of India (NSE).
