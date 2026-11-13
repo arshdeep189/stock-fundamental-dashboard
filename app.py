@@ -1,10 +1,15 @@
 import plotly.graph_objects as go
 import pandas as pd
 import streamlit as st
-import yfinance as yf
 
-from src.data_fetcher import fetch_stock_data
-from src.financial_statements import fetch_financial_statements
+from src.data_source import (
+    DEMO_MODE,
+    DEFAULT_TICKER,
+    normalize_ticker,
+    fetch_stock_data,
+    fetch_financial_statements,
+    get_company_info
+)
 
 from src.financial_metrics import (
     get_value_for_date,
@@ -30,23 +35,30 @@ st.set_page_config(
 )
 
 st.title("📈 Indian Stock Fundamental Dashboard")
+if DEMO_MODE:
+    st.warning(
+        "SYNTHETIC DEMO: All companies, prices, and "
+        "financial figures are fictional and are not "
+        "suitable for investment decisions."
+    )
 st.write("Explore NSE-listed companies using financial data.")
 
 ticker_input = st.text_input(
-    "Enter NSE stock ticker",
-    value="TCS"
+    "Enter Demo Company"
+    if DEMO_MODE else "Enter NSE Stock Ticker",
+    value=DEFAULT_TICKER
 )
 
 ticker = ticker_input.strip().upper()
-
+ticker=normalize_ticker(ticker_input)
 period = st.selectbox(
     "Select Historical Period",
     ["1mo", "3mo", "6mo", "1y", "5y"],
     index=2
 )
 
-if ticker and not ticker.endswith(".NS"):
-    ticker += ".NS"
+# if ticker and not ticker.endswith(".NS"):
+#     ticker += ".NS"
 
 if st.button("Analyze Stock"):
     st.session_state["analysis_request"] = (ticker, period)
@@ -59,8 +71,7 @@ if "analysis_request" in st.session_state:
         try:
             with st.spinner("Fetching stock data..."):
                 history = fetch_stock_data(ticker,period)
-                stock = yf.Ticker(ticker)
-                info = stock.info
+                info = get_company_info(ticker)
 
             if history is None or history.empty:
                 st.error("No price data found for this ticker.")

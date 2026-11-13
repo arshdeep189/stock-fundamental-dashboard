@@ -1,9 +1,9 @@
 import plotly.graph_objects as go
 import streamlit as st
 import pandas as pd
-import yfinance as yf
+# import yfinance as yf
 
-from src.financial_statements import fetch_financial_statements
+# from src.financial_statements import fetch_financial_statements
 from src.financial_metrics import (
     get_value_for_date,
     calculate_growth,
@@ -13,6 +13,12 @@ from src.financial_metrics import (
     format_financial_value
 )
 
+from src.data_source import (
+    DEMO_MODE,
+    normalize_ticker,
+    fetch_financial_statements,
+    get_company_info
+)
 
 st.set_page_config(
     page_title="Company Comparison",
@@ -21,24 +27,34 @@ st.set_page_config(
 )
 
 st.title("⚖️ NSE Company Comparison")
+if DEMO_MODE:
+    st.warning(
+        "SYNTHETIC DEMO: DEMO1 and DEMO2 are fictional "
+        "companies. Their financial figures are illustrative."
+    )   
 st.write("Compare two companies using fundamental analysis.")
 
 
 # Normalize NSE stock tickers
-def normalize_ticker(ticker):
-    ticker = ticker.strip().upper()
+# def normalize_ticker(ticker):
+#     ticker = ticker.strip().upper()
 
-    if ticker and not ticker.endswith(".NS"):
-        ticker += ".NS"
+#     if ticker and not ticker.endswith(".NS"):
+#         ticker += ".NS"
 
-    return ticker
+#     return ticker
 
 
 # Cache downloaded financial data for one hour
 @st.cache_data(ttl=3600)
 def load_company(ticker):
-    income, balance, cashflow = fetch_financial_statements(ticker)
-    currency = yf.Ticker(ticker).info.get("financialCurrency")
+    income, balance, cashflow = (
+        fetch_financial_statements(ticker)
+    )
+
+    currency = get_company_info(ticker).get(
+        "financialCurrency"
+    )
 
     return income, balance, currency
 
@@ -137,10 +153,16 @@ with st.form("comparison_form"):
     col1, col2 = st.columns(2)
 
     with col1:
-        company_a = st.text_input("Company A", value="TCS")
+        company_a = st.text_input(
+            "Company A",
+            value="DEMO1" if DEMO_MODE else "TCS"
+        )
 
     with col2:
-        company_b = st.text_input("Company B", value="INFY")
+        company_b = st.text_input(
+            "Company B",
+            value="DEMO2" if DEMO_MODE else "INFY"
+        )
 
     submitted = st.form_submit_button("Compare Companies")
 
@@ -241,9 +263,14 @@ if "comparison" in st.session_state:
                     "compare absolute amounts without conversion."
                 )
 
-            st.caption(
-                "Source: Yahoo Finance via yfinance. "
-                "Figures require verification against company filings."
+            if DEMO_MODE:
+                st.caption(
+                    "Source: Reproducible synthetic demonstration data."
+                )
+            else:
+                st.caption(
+                    "Source: Yahoo Finance via yfinance. "
+                    "Verify figures against company filings."
             )
 
     except Exception as e:
